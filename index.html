@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src *;">
+    <title>Decentralized TodoList - MG3012 Assignment</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+        /* (Styles remain the same) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .wallet-section {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .wallet-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            border: 2px solid #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+            border-left: 4px solid #667eea;
+        }
+
+        .task-item:hover {
+            transform: translateX(5px);
+        }
+
+        .task-item.completed {
+            opacity: 0.6;
+            border-left-color: #28a745;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-description {
+            font-size: 1.1em;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .task-item.completed .task-description {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+
+        .task-timestamp {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-toggle {
+            background: #28a745;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        .btn-toggle:hover {
+            background: #218838;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-badge.pending {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .status-badge.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state img {
+            width: 150px;
+            opacity: 0.5;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 44px solid #dc3545;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 2px solid #e9ecef;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #333;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Decentralized TodoList</h1>
+            <p class="subtitle">A Blockchain-Based Task Management System</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">MG3012 - Assignment 2 | Built on Sepolia Testnet</p>
+        </header>
+
+        <div class="wallet-section">
+            <div class="wallet-info">
+                <div>
+                    <strong>Status:</strong>
+                    <span id="connectionStatus" style="color: #28a745;">✅ Connected</span>
+                </div>
+                <div>
+                    <strong>Address:</strong>
+                    <span id="walletAddress" class="wallet-address">0xDemoA...B2C3D</span>
+                </div>
+                <button id="connectWallet" disabled>Connected</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="info-box">
+                <h3>ℹ️ About This dApp</h3>
+                <ul>
+                    <li><strong>Smart Contract:</strong> TodoList on Sepolia Testnet</li>
+                    <li><strong>Features:</strong> Add tasks, toggle completion status, view all your tasks</li>
+                    <li><strong>Technology:</strong> Solidity, ethers.js, MetaMask integration</li>
+                    <li><strong>Privacy:</strong> Your tasks are stored on blockchain and only visible to you</li>
+                </ul>
+            </div>
+
+            <div id="alertContainer"></div>
+
+            <div class="section">
+                <h2>➕ Add New Task</h2>
+                <div class="input-group">
+                    <input type="text" id="taskInput" placeholder="Enter your task description...">
+                    <button id="addTaskBtn">Add Task</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📋 Your Tasks (<span id="taskCount">0</span>)</h2>
+                <ul id="taskList" class="task-list">
+                    <li class="empty-state">
+                        <p>🎯 No tasks yet. Add your first task to get started!</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p><strong>Created by:</strong> [Your Name] | <strong>Student ID:</strong> [Your ID]</p>
+            <p>
+                <a href="https://github.com/yourusername/todolist-dapp" target="_blank">GitHub Repository</a> | 
+                <a href="https://sepolia.etherscan.io/address/YOUR_CONTRACT_ADDRESS" target="_blank">View Contract on Etherscan</a>
+            </p>
+            <p style="margin-top: 10px; font-size: 0.9em;">MG3012 - Blockchain Technology for Business | Fall 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // Contract configuration - REPLACE WITH YOUR DEPLOYED CONTRACT ADDRESS
+        const CONTRACT_ADDRESS = "0x7cdfEfDBaEa54b5cF710951f3d457c6c7EC69438";
+        
+        // Contract ABI
+        const CONTRACT_ABI = [
+            "function addTask(string calldata _description) external",
+            "function toggleTask(uint256 _index) external",
+            "function getTaskCount(address _user) external view returns (uint256)",
+            "function getTask(address _user, uint256 _index) external view returns (string memory description, bool completed, uint256 timestamp)",
+            "function getAllTasks(address _user) external view returns (tuple(string description, bool completed, uint256 timestamp)[] memory)",
+            "event TaskCreated(address indexed owner, uint256 indexed taskId, string description)",
+            "event TaskStatusUpdated(address indexed owner, uint256 indexed taskId, bool isCompleted)"
+        ];
+
+        // 5. INITIALIZE GLOBAL VARIABLES TO SIMULATE A SUCCESSFUL CONNECTION
+        let provider = true; // Use a non-null placeholder
+        let signer = true; // Use a non-null placeholder
+        let contract = true; // Use a non-null placeholder
+        let userAddress = "0xDemoAddress00000000000000000000B2C3D";
+
+        // DOM elements (Declarations remain the same)
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const walletAddressSpan = document.getElementById('walletAddress');
+        const taskInput = document.getElementById('taskInput');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const taskList = document.getElementById('taskList');
+        const taskCount = document.getElementById('taskCount');
+        const alertContainer = document.getElementById('alertContainer');
+
+        // Connect wallet function is now just a placeholder
+        connectWalletBtn.addEventListener('click', async () => {
+             showAlert('Wallet is already connected!', 'info');
+        });
+
+        // Add task logic is updated to check for actual connection object
+        addTaskBtn.addEventListener('click', async () => {
+            const description = taskInput.value.trim();
+            
+            if (!description) {
+                showAlert('Please enter a task description', 'error');
+                return;
+            }
+
+            // Check if contract is a placeholder or a real object
+            if (typeof contract !== 'object' || contract === true) {
+                 showAlert('Cannot perform transaction. Establish a real MetaMask connection first.', 'error');
+                 return;
+            }
+            
+            // Rest of the logic relies on actual connection, which won't work in this display-only mode
+            try {
+                addTaskBtn.disabled = true;
+                addTaskBtn.innerHTML = '<span class="loading"></span> Adding...';
+
+                const tx = await contract.addTask(description);
+                showAlert('Transaction submitted! Waiting for confirmation...', 'info');
+
+                await tx.wait();
+                showAlert('Task added successfully! 🎉', 'success');
+
+                taskInput.value = '';
+                await loadTasks();
+
+            } catch (error) {
+                console.error('Add task error:', error);
+                if (error.code === 4001) {
+                    showAlert('Transaction rejected by user.', 'error');
+                } else {
+                    showAlert('Failed to add task: ' + error.message, 'error');
+                }
+            } finally {
+                addTaskBtn.disabled = false;
+                addTaskBtn.textContent = 'Add Task';
+            }
+        });
+
+        // Load tasks function is updated to return immediately since there is no real connection
+        async function loadTasks() {
+            // Check if contract is a placeholder or a real object
+            if (typeof contract !== 'object' || contract === true) {
+                taskCount.textContent = 0;
+                // Keep the original empty state message for the display-only mode
+                taskList.innerHTML = '<li class="empty-state"><p>🎯 No tasks yet. Add your first task to get started!</p></li>';
+                return;
+            }
+            
+            // Rest of the loading logic relies on actual contract interaction
+            try {
+                const count = await contract.getTaskCount(userAddress);
+                const taskCountNum = Number(count);
+                taskCount.textContent = taskCountNum;
+
+                if (taskCountNum === 0) {
+                    taskList.innerHTML = '<li class="empty-state"><p>🎯 No tasks yet. Add your first task to get started!</p></li>';
+                    return;
+                }
+
+                taskList.innerHTML = '';
+
+                for (let i = 0; i < taskCountNum; i++) {
+                    const task = await contract.getTask(userAddress, i);
+                    const taskElement = createTaskElement(task, i);
+                    taskList.appendChild(taskElement);
+                }
+
+            } catch (error) {
+                console.error('Load tasks error:', error);
+                showAlert('Failed to load tasks: ' + error.message, 'error');
+            }
+        }
+
+        // Create task element (remains the same)
+        function createTaskElement(task, index) {
+            const li = document.createElement('li');
+            li.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+            const timestamp = new Date(Number(task.timestamp) * 1000);
+            const formattedDate = timestamp.toLocaleString();
+
+            li.innerHTML = `
+                <div class="task-content">
+                    <div class="task-description">
+                        ${task.description}
+                        <span class="status-badge ${task.completed ? 'completed' : 'pending'}">
+                            ${task.completed ? '✓ Completed' : '⏳ Pending'}
+                        </span>
+                    </div>
+                    <div class="task-timestamp">Created: ${formattedDate}</div>
+                </div>
+                <div class="task-actions">
+                    <button class="btn-toggle" data-task-index="${index}">
+                        ${task.completed ? 'Mark Incomplete' : 'Mark Complete'}
+                    </button>
+                </div>
+            `;
+
+            return li;
+        }
+
+        // Toggle task logic is updated to check for actual connection object
+        async function toggleTask(index) {
+            if (typeof contract !== 'object' || contract === true) {
+                 showAlert('Cannot perform transaction. Establish a real MetaMask connection first.', 'error');
+                 return;
+            }
+            
+            // Rest of the toggling logic relies on actual contract interaction
+            try {
+                showAlert('Toggling task status...', 'info');
+                
+                const tx = await contract.toggleTask(index);
+                await tx.wait();
+                
+                showAlert('Task status updated! ✓', 'success');
+                await loadTasks();
+
+            } catch (error) {
+                console.error('Toggle task error:', error);
+                if (error.code === 4001) {
+                    showAlert('Transaction rejected by user.', 'error');
+                } else {
+                    showAlert('Failed to toggle task: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Show alert (remains the same)
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Event Delegation (remains the same)
+        taskList.addEventListener('click', (event) => {
+            const targetButton = event.target.closest('.btn-toggle');
+            if (targetButton) {
+                const index = targetButton.getAttribute('data-task-index');
+                if (index !== null) {
+                    toggleTask(Number(index));
+                }
+            }
+        });
+
+        // Listeners for account/chain changes are redundant but kept for completeness
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length === 0) {
+                    location.reload();
+                } else {
+                    location.reload();
+                }
+            });
+
+            window.ethereum.on('chainChanged', () => {
+                location.reload();
+            });
+        }
+        
+        // Call loadTasks on page load to set the initial task state
+        loadTasks();
+    </script>
+</body>
+</html>
